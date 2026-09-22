@@ -1,0 +1,37 @@
+project:
+  name: agentic-maintenance-assistant-scania
+
+data:
+  raw_root: data/raw/2024-34-3
+  raw_data_dir: data/raw/2024-34-3/data
+  raw_docs_dir: data/raw/2024-34-3/documentation
+
+  train_operational_readouts: data/raw/2024-34-3/data/train_operational_readouts.csv
+  validation_operational_readouts: data/raw/2024-34-3/data/validation_operational_readouts.csv
+  test_operational_readouts: data/raw/2024-34-3/data/test_operational_readouts.csv
+
+  train_specifications: data/raw/2024-34-3/data/train_specifications.csv
+  validation_specifications: data/raw/2024-34-3/data/validation_specifications.csv
+  test_specifications: data/raw/2024-34-3/data/test_specifications.csv
+
+  train_tte: data/raw/2024-34-3/data/train_tte.csv
+  validation_labels: data/raw/2024-34-3/data/validation_labels.csv
+  test_labels: data/raw/2024-34-3/data/test_labels.csv
+
+  challenge_documentation: data/raw/2024-34-3/documentation/2024_IDA_challenge_v2.pdf
+  component_documentation: data/raw/2024-34-3/documentation/Scania_Component_X.pdf
+
+interim:
+  train_operational_readouts_parquet: data/interim/train_operational_readouts.parquet
+  validation_operational_readouts_parquet: data/interim/validation_operational_readouts.parquet
+  test_operational_readouts_parquet: data/interim/test_operational_readouts.parquet
+
+processed:
+  train_features: data/processed/train_features.parquet
+  validation_features: data/processed/validation_features.parquet
+  test_features: data/processed/test_features.parquet
+
+reports:
+  tables_dir: reports/tables
+  figures_dir: reports/figures
+  generated_reports_dir: reports/generated_reports
