@@ -1,5 +1,5 @@
 from pathlib import Path
-
+from lightgbm import LGBMClassifier
 import joblib
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
@@ -130,7 +130,7 @@ def prepare_validation_data(
     return X_validation, y_validation_binary, vehicle_ids
 
 
-def train_random_forest() -> Pipeline:
+def build_random_forest_model() -> Pipeline:
     """Create a baseline Random Forest pipeline."""
     model = Pipeline(
         steps=[
@@ -155,13 +155,43 @@ def train_random_forest() -> Pipeline:
     return model
 
 
+def build_lightgbm_model() -> Pipeline:
+    """Create a baseline LightGBM pipeline."""
+    model = Pipeline(
+        steps=[
+            (
+                "imputer",
+                SimpleImputer(strategy="median"),
+            ),
+            (
+                "classifier",
+                LGBMClassifier(
+                    n_estimators=500,
+                    learning_rate=0.03,
+                    num_leaves=31,
+                    max_depth=-1,
+                    class_weight="balanced",
+                    random_state=42,
+                    n_jobs=-1,
+                    verbose=-1,
+                ),
+            ),
+        ]
+    )
+
+    return model
+
+
 def evaluate_model(
+    model_name: str,
     model: Pipeline,
     X_validation: pd.DataFrame,
     y_validation: pd.Series,
     vehicle_ids: pd.Series,
-) -> None:
+) -> dict:
     """Evaluate model on validation data."""
+    print("=" * 80)
+    print(f"Evaluating model: {model_name}")
     print("Predicting validation probabilities...")
 
     validation_probabilities = model.predict_proba(X_validation)[:, 1]
@@ -202,6 +232,8 @@ def evaluate_model(
         / (threshold_df["precision"] + threshold_df["recall"])
     )
 
+    threshold_df = threshold_df.dropna()
+
     best_row = threshold_df.sort_values("f1", ascending=False).iloc[0]
 
     print("\nBest validation threshold by F1:")
@@ -218,22 +250,40 @@ def evaluate_model(
         }
     )
 
-    predictions_df.to_csv(VALIDATION_PREDICTIONS_PATH, index=False)
-
-    threshold_df.to_csv(
-        REPORTS_TABLES_DIR / "validation_threshold_metrics_baseline.csv",
-        index=False,
+    prediction_output_path = (
+        REPORTS_TABLES_DIR / f"validation_predictions_{model_name}.csv"
     )
 
-    print(f"\nSaved validation predictions to: {VALIDATION_PREDICTIONS_PATH}")
+    threshold_output_path = (
+        REPORTS_TABLES_DIR / f"validation_threshold_metrics_{model_name}.csv"
+    )
+
+    predictions_df.to_csv(prediction_output_path, index=False)
+    threshold_df.to_csv(threshold_output_path, index=False)
+
+    print(f"\nSaved validation predictions to: {prediction_output_path}")
+    print(f"Saved threshold metrics to: {threshold_output_path}")
+
+    return {
+        "model_name": model_name,
+        "roc_auc": roc_auc,
+        "pr_auc": pr_auc,
+        "best_threshold": best_row["threshold"],
+        "best_precision": best_row["precision"],
+        "best_recall": best_row["recall"],
+        "best_f1": best_row["f1"],
+    }
 
 
-def save_model(model: Pipeline) -> None:
+def save_model(model_name: str, model: Pipeline) -> None:
     """Save trained model."""
     MODELS_DIR.mkdir(parents=True, exist_ok=True)
-    joblib.dump(model, MODEL_OUTPUT_PATH)
-    print(f"Saved model to: {MODEL_OUTPUT_PATH}")
 
+    model_output_path = MODELS_DIR / f"{model_name}.joblib"
+
+    joblib.dump(model, model_output_path)
+
+    print(f"Saved model to: {model_output_path}")
 
 def main() -> None:
     train_df, validation_df = load_features()
@@ -245,22 +295,45 @@ def main() -> None:
         train_columns=X_train.columns.tolist(),
     )
 
-    model = train_random_forest()
+    models = {
+        "random_forest_baseline": build_random_forest_model(),
+        "lightgbm_baseline": build_lightgbm_model(),
+    }
 
-    print("\nTraining Random Forest baseline...")
-    model.fit(X_train, y_train)
+    results = []
 
-    evaluate_model(
-        model=model,
-        X_validation=X_validation,
-        y_validation=y_validation,
-        vehicle_ids=validation_vehicle_ids,
-    )
+    for model_name, model in models.items():
+        print("=" * 80)
+        print(f"Training model: {model_name}")
 
-    save_model(model)
+        model.fit(X_train, y_train)
+
+        model_result = evaluate_model(
+            model_name=model_name,
+            model=model,
+            X_validation=X_validation,
+            y_validation=y_validation,
+            vehicle_ids=validation_vehicle_ids,
+        )
+
+        results.append(model_result)
+
+        save_model(model_name=model_name, model=model)
+
+    results_df = pd.DataFrame(results)
+
+    REPORTS_TABLES_DIR.mkdir(parents=True, exist_ok=True)
+
+    comparison_output_path = REPORTS_TABLES_DIR / "baseline_model_comparison.csv"
+    results_df.to_csv(comparison_output_path, index=False)
+
+    print("=" * 80)
+    print("Baseline model comparison:")
+    print(results_df)
+
+    print(f"\nSaved model comparison to: {comparison_output_path}")
 
     print("\nBaseline training completed successfully.")
-
 
 if __name__ == "__main__":
     main()
