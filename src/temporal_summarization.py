@@ -46,11 +46,21 @@ def build_temporal_features(operational_df: pd.DataFrame) -> pd.DataFrame:
     Build vehicle-level temporal summary features from operational readouts.
 
     For each vehicle and each sensor, compute:
-    - mean
-    - std
-    - min
-    - max
+    - global mean
+    - global std
+    - global min
+    - global max
     - last observed value
+    - recent mean
+    - recent std
+    - recent min
+    - recent max
+    - recent mean minus global mean
+    - last value minus global mean
+
+    Recent window:
+    - last 20% of readouts per vehicle
+    - at least 1 row per vehicle
     """
     sensor_columns = get_sensor_columns(operational_df)
 
@@ -60,15 +70,15 @@ def build_temporal_features(operational_df: pd.DataFrame) -> pd.DataFrame:
 
     grouped = operational_df.groupby(ID_COLUMN, sort=False)
 
-    print("Computing mean, std, min, max features...")
+    print("Computing global mean, std, min, max features...")
 
-    summary_features = grouped[sensor_columns].agg(["mean", "std", "min", "max"])
+    global_features = grouped[sensor_columns].agg(["mean", "std", "min", "max"])
 
-    summary_features.columns = [
-        f"{sensor}_{stat}" for sensor, stat in summary_features.columns
+    global_features.columns = [
+        f"{sensor}_{stat}" for sensor, stat in global_features.columns
     ]
 
-    summary_features = summary_features.reset_index()
+    global_features = global_features.reset_index()
 
     print("Computing last observed values...")
 
@@ -81,13 +91,52 @@ def build_temporal_features(operational_df: pd.DataFrame) -> pd.DataFrame:
 
     readout_counts = grouped.size().reset_index(name="num_readouts")
 
+    print("Selecting recent window per vehicle...")
+
+    operational_df["_row_number"] = grouped.cumcount()
+    operational_df["_num_rows"] = grouped[TIME_COLUMN].transform("size")
+    operational_df["_recent_start"] = (operational_df["_num_rows"] * 0.8).astype(int)
+
+    recent_df = operational_df[
+        operational_df["_row_number"] >= operational_df["_recent_start"]
+    ].copy()
+
+    recent_grouped = recent_df.groupby(ID_COLUMN, sort=False)
+
+    print("Computing recent mean, std, min, max features...")
+
+    recent_features = recent_grouped[sensor_columns].agg(["mean", "std", "min", "max"])
+
+    recent_features.columns = [
+        f"{sensor}_recent_{stat}" for sensor, stat in recent_features.columns
+    ]
+
+    recent_features = recent_features.reset_index()
+
     print("Merging temporal features...")
 
-    features = summary_features.merge(last_values, on=ID_COLUMN, how="left")
+    features = global_features.merge(last_values, on=ID_COLUMN, how="left")
+    features = features.merge(recent_features, on=ID_COLUMN, how="left")
     features = features.merge(readout_counts, on=ID_COLUMN, how="left")
 
-    return features
+    print("Computing difference features...")
 
+    for sensor in sensor_columns:
+        global_mean_col = f"{sensor}_mean"
+        recent_mean_col = f"{sensor}_recent_mean"
+        last_col = f"{sensor}_last"
+
+        if global_mean_col in features.columns and recent_mean_col in features.columns:
+            features[f"{sensor}_recent_minus_global_mean"] = (
+                features[recent_mean_col] - features[global_mean_col]
+            )
+
+        if global_mean_col in features.columns and last_col in features.columns:
+            features[f"{sensor}_last_minus_global_mean"] = (
+                features[last_col] - features[global_mean_col]
+            )
+
+    return features
 
 def merge_static_and_target_features(
     temporal_features: pd.DataFrame,
