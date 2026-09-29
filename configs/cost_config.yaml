@@ -1,8 +1,27 @@
-costs:
-  true_negative: 0
-  false_positive: 10
-  false_negative: 100
-  true_positive: 20
+scenarios:
+  balanced_cost:
+    true_negative: 0
+    false_positive: 10
+    false_negative: 100
+    true_positive: 20
+
+  safety_critical:
+    true_negative: 0
+    false_positive: 10
+    false_negative: 500
+    true_positive: 30
+
+  inspection_expensive:
+    true_negative: 0
+    false_positive: 50
+    false_negative: 100
+    true_positive: 30
+
+  recall_focused:
+    true_negative: 0
+    false_positive: 5
+    false_negative: 300
+    true_positive: 20
 
 threshold_grid:
   start: 0.01
@@ -13,4 +32,5 @@ input:
   validation_predictions_path: reports/tables/validation_predictions_lightgbm_baseline.csv
 
 output:
-  cost_evaluation_path: reports/tables/cost_evaluation_lightgbm.csv
+  cost_evaluation_path: reports/tables/cost_evaluation_lightgbm_all_scenarios.csv
+  scenario_summary_path: reports/tables/cost_scenario_summary_lightgbm.csv
