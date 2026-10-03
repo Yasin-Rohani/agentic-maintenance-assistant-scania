@@ -1,18 +1,55 @@
 from pathlib import Path
 from datetime import datetime
 
+import matplotlib.pyplot as plt
+
 from agents.maintenance_agent import build_maintenance_report
 
 
 GENERATED_REPORTS_DIR = Path("reports/generated_reports")
+FIGURES_DIR = Path("reports/figures")
 DEFAULT_SCENARIO = "safety_critical"
 
 
-def build_markdown_report(report: dict) -> str:
+def generate_risk_threshold_chart(report: dict, output_dir: Path = FIGURES_DIR) -> Path:
+    """
+    Generate a simple chart comparing failure probability against
+    the cost-sensitive threshold.
+    """
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    vehicle_id = report["vehicle_id"]
+    probability = report["failure_probability"]
+    threshold = report["cost_sensitive_threshold"]
+
+    output_path = output_dir / f"vehicle_{vehicle_id}_risk_threshold.png"
+
+    labels = ["Failure probability", "Cost-sensitive threshold"]
+    values = [probability, threshold]
+
+    plt.figure(figsize=(7, 4))
+    plt.bar(labels, values)
+    plt.ylim(0, 1)
+    plt.ylabel("Score")
+    plt.title(f"Vehicle {vehicle_id}: Risk vs Threshold")
+
+    for index, value in enumerate(values):
+        plt.text(index, value + 0.02, f"{value:.4f}", ha="center")
+
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=150)
+    plt.close()
+
+    return output_path
+
+
+def build_markdown_report(report: dict, chart_path: Path) -> str:
     """
     Convert a maintenance agent report dictionary into Markdown text.
     """
     generated_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    relative_chart_path = Path("..") / "figures" / chart_path.name
 
     markdown = f"""# Maintenance Agent Report
 
@@ -35,6 +72,12 @@ def build_markdown_report(report: dict) -> str:
 | Recommended action | {report["recommended_action"]} |
 | Severity | {report["severity"]} |
 | True label binary | {report["true_label_binary"]} |
+
+---
+
+## Risk vs Threshold Chart
+
+![Risk vs Threshold]({relative_chart_path.as_posix()})
 
 ---
 
@@ -89,7 +132,12 @@ def save_markdown_report(
         scenario_name=scenario_name,
     )
 
-    markdown_report = build_markdown_report(report)
+    chart_path = generate_risk_threshold_chart(report)
+
+    markdown_report = build_markdown_report(
+        report=report,
+        chart_path=chart_path,
+    )
 
     output_dir.mkdir(parents=True, exist_ok=True)
 
