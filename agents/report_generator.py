@@ -40,6 +40,46 @@ def generate_risk_threshold_chart(report: dict, output_dir: Path = FIGURES_DIR) 
 
     return output_path
 
+def generate_abnormal_features_chart(
+    vehicle_id: int,
+    top_n: int = 10,
+    output_dir: Path = FIGURES_DIR,
+) -> Path:
+    """
+    Generate a horizontal bar chart for the top abnormal vehicle features.
+    The chart uses absolute standardized difference.
+    """
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    comparison_df = compare_vehicle_to_fleet(
+        vehicle_id=vehicle_id,
+        top_n=top_n,
+    )
+
+    output_path = output_dir / f"vehicle_{vehicle_id}_abnormal_features.png"
+
+    if comparison_df.empty:
+        return output_path
+
+    chart_df = comparison_df.sort_values(
+        "abs_standardized_difference",
+        ascending=True,
+    )
+
+    plt.figure(figsize=(9, 6))
+    plt.barh(
+        chart_df["feature"],
+        chart_df["abs_standardized_difference"],
+    )
+    plt.xlabel("Absolute Standardized Difference")
+    plt.ylabel("Feature")
+    plt.title(f"Vehicle {vehicle_id}: Top Abnormal Features")
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=150)
+    plt.close()
+
+    return output_path
+
 def build_behavior_comparison_markdown(vehicle_id: int, top_n: int = 10) -> str:
     """
     Build a Markdown table with the top abnormal vehicle features
@@ -70,13 +110,18 @@ def build_behavior_comparison_markdown(vehicle_id: int, top_n: int = 10) -> str:
 
     return "\n".join(markdown_lines)
 
-def build_markdown_report(report: dict, chart_path: Path) -> str:
+def build_markdown_report(
+    report: dict,
+    risk_chart_path: Path,
+    abnormal_chart_path: Path,
+    ) -> str:
     """
     Convert a maintenance agent report dictionary into Markdown text.
     """
     generated_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    relative_chart_path = Path("..") / "figures" / chart_path.name
+    relative_risk_chart_path = Path("..") / "figures" / risk_chart_path.name
+    relative_abnormal_chart_path = Path("..") / "figures" / abnormal_chart_path.name
 
     behavior_comparison_markdown = build_behavior_comparison_markdown(
     vehicle_id=report["vehicle_id"],
@@ -109,7 +154,7 @@ def build_markdown_report(report: dict, chart_path: Path) -> str:
 
 ## Risk vs Threshold Chart
 
-![Risk vs Threshold]({relative_chart_path.as_posix()})
+![Risk vs Threshold]({relative_risk_chart_path.as_posix()})
 
 ---
 
@@ -119,6 +164,12 @@ The table below compares this vehicle against fleet-level averages.
 Features with larger absolute standardized differences are more unusual compared with the validation fleet.
 
 {behavior_comparison_markdown}
+
+---
+
+## Abnormal Features Chart
+
+![Top Abnormal Features]({relative_abnormal_chart_path.as_posix()})
 
 ---
 
@@ -173,11 +224,17 @@ def save_markdown_report(
         scenario_name=scenario_name,
     )
 
-    chart_path = generate_risk_threshold_chart(report)
+    risk_chart_path = generate_risk_threshold_chart(report)
+
+    abnormal_chart_path = generate_abnormal_features_chart(
+       vehicle_id=vehicle_id,
+    top_n=10,
+    )
 
     markdown_report = build_markdown_report(
-        report=report,
-        chart_path=chart_path,
+    report=report,
+    risk_chart_path=risk_chart_path,
+    abnormal_chart_path=abnormal_chart_path,
     )
 
     output_dir.mkdir(parents=True, exist_ok=True)
