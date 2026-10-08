@@ -1,10 +1,8 @@
 from pathlib import Path
 from datetime import datetime
-
 import matplotlib.pyplot as plt
-
 from agents.maintenance_agent import build_maintenance_report
-
+from agents.behavior_tool import compare_vehicle_to_fleet
 
 GENERATED_REPORTS_DIR = Path("reports/generated_reports")
 FIGURES_DIR = Path("reports/figures")
@@ -42,6 +40,35 @@ def generate_risk_threshold_chart(report: dict, output_dir: Path = FIGURES_DIR) 
 
     return output_path
 
+def build_behavior_comparison_markdown(vehicle_id: int, top_n: int = 10) -> str:
+    """
+    Build a Markdown table with the top abnormal vehicle features
+    compared with fleet-level averages.
+    """
+    comparison_df = compare_vehicle_to_fleet(
+        vehicle_id=vehicle_id,
+        top_n=top_n,
+    )
+
+    if comparison_df.empty:
+        return "No abnormal feature comparison could be generated."
+
+    markdown_lines = [
+        "| Feature | Vehicle Value | Fleet Mean | Raw Difference | Standardized Difference |",
+        "|---|---:|---:|---:|---:|",
+    ]
+
+    for _, row in comparison_df.iterrows():
+        markdown_lines.append(
+            "| "
+            f"{row['feature']} | "
+            f"{row['vehicle_value']:.4f} | "
+            f"{row['fleet_mean']:.4f} | "
+            f"{row['raw_difference']:.4f} | "
+            f"{row['standardized_difference']:.4f} |"
+        )
+
+    return "\n".join(markdown_lines)
 
 def build_markdown_report(report: dict, chart_path: Path) -> str:
     """
@@ -50,6 +77,11 @@ def build_markdown_report(report: dict, chart_path: Path) -> str:
     generated_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     relative_chart_path = Path("..") / "figures" / chart_path.name
+
+    behavior_comparison_markdown = build_behavior_comparison_markdown(
+    vehicle_id=report["vehicle_id"],
+    top_n=10,
+    )
 
     markdown = f"""# Maintenance Agent Report
 
@@ -78,6 +110,15 @@ def build_markdown_report(report: dict, chart_path: Path) -> str:
 ## Risk vs Threshold Chart
 
 ![Risk vs Threshold]({relative_chart_path.as_posix()})
+
+---
+
+## Top Abnormal Vehicle Features
+
+The table below compares this vehicle against fleet-level averages.  
+Features with larger absolute standardized differences are more unusual compared with the validation fleet.
+
+{behavior_comparison_markdown}
 
 ---
 
