@@ -1,4 +1,5 @@
 import argparse
+import json
 from pathlib import Path
 from datetime import datetime
 
@@ -192,9 +193,39 @@ def run_orchestrator(vehicle_id: int, scenario_name: str = DEFAULT_SCENARIO) -> 
     state = run_behavior_analysis_step(state)
     state = run_report_generation_step(state)
     state = evaluate_progress(state)
+    state_path = save_task_state(state)
 
+    state["state_path"] = str(state_path)
+    add_step(
+    state=state,
+    step_name="save_shared_task_state",
+    status="completed",
+    details=f"Shared task state saved at: {state_path}",
+    )
+    # Save once more after adding the save step itself
+    save_task_state(state)
     return state
 
+
+    
+def save_task_state(state: dict) -> Path:
+    """
+    Save the shared task state as a JSON file.
+
+    This represents the shared task state of the agentic workflow.
+    """
+    output_dir = Path("reports/generated_reports")
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    vehicle_id = state["vehicle_id"]
+    scenario = state["scenario"]
+
+    output_path = output_dir / f"vehicle_{vehicle_id}_{scenario}_agent_state.json"
+
+    with output_path.open("w", encoding="utf-8") as file:
+        json.dump(state, file, indent=4)
+
+    return output_path
 
 def print_orchestrator_state(state: dict) -> None:
     """
