@@ -24,10 +24,9 @@ models/
 *.pkl
 
 # Generated reports and figures
-reports/figures/*.png
-reports/tables/*.csv
-reports/generated_reports/*.md
-reports/generated_reports/*.pdf
+reports/figures/
+reports/tables/
+reports/generated_reports/
 
 # Environment variables
 .env
