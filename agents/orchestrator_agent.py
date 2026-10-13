@@ -194,8 +194,8 @@ def run_orchestrator(vehicle_id: int, scenario_name: str = DEFAULT_SCENARIO) -> 
     state = run_report_generation_step(state)
     state = evaluate_progress(state)
     state_path = save_task_state(state)
-
     state["state_path"] = str(state_path)
+
     add_step(
     state=state,
     step_name="save_shared_task_state",
@@ -204,10 +204,25 @@ def run_orchestrator(vehicle_id: int, scenario_name: str = DEFAULT_SCENARIO) -> 
     )
     # Save once more after adding the save step itself
     save_task_state(state)
+
+    dashboard_state_path = save_dashboard_state(state)
+    state["dashboard_state_path"] = str(dashboard_state_path)
+
+    add_step(
+    state=state,
+    step_name="save_dashboard_state",
+    status="completed",
+    details=f"Dashboard-ready state saved at: {dashboard_state_path}",
+    )
+
+    # Save final state again after dashboard step
+    save_task_state(state)
+    save_dashboard_state(state)
+
     return state
 
 
-    
+
 def save_task_state(state: dict) -> Path:
     """
     Save the shared task state as a JSON file.
@@ -224,6 +239,52 @@ def save_task_state(state: dict) -> Path:
 
     with output_path.open("w", encoding="utf-8") as file:
         json.dump(state, file, indent=4)
+
+    return output_path
+
+def build_dashboard_state(state: dict) -> dict:
+    """
+    Build a compact dashboard-ready state from the full agentic task state.
+    """
+    decision = state.get("decision") or {}
+    behavior_summary = state.get("behavior_summary") or {}
+
+    dashboard_state = {
+        "vehicle_id": state["vehicle_id"],
+        "scenario": state["scenario"],
+        "status": state["status"],
+        "failure_probability": decision.get("failure_probability"),
+        "cost_sensitive_threshold": decision.get("cost_sensitive_threshold"),
+        "recommended_action": decision.get("action_label"),
+        "severity": decision.get("severity"),
+        "true_label_binary": decision.get("true_label_binary"),
+        "top_abnormal_features": behavior_summary.get("top_abnormal_features", []),
+        "report_path": state.get("report_path"),
+        "state_path": state.get("state_path"),
+        "num_workflow_steps": len(state.get("steps", [])),
+        "num_errors": len(state.get("errors", [])),
+        "created_at": state.get("created_at"),
+    }
+
+    return dashboard_state
+
+
+def save_dashboard_state(state: dict) -> Path:
+    """
+    Save a compact dashboard-ready JSON file.
+    """
+    output_dir = Path("reports/generated_reports")
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    vehicle_id = state["vehicle_id"]
+    scenario = state["scenario"]
+
+    output_path = output_dir / f"vehicle_{vehicle_id}_{scenario}_dashboard_state.json"
+
+    dashboard_state = build_dashboard_state(state)
+
+    with output_path.open("w", encoding="utf-8") as file:
+        json.dump(dashboard_state, file, indent=4)
 
     return output_path
 
@@ -261,6 +322,12 @@ def print_orchestrator_state(state: dict) -> None:
     if state["report_path"] is not None:
         print(f"\nGenerated report: {state['report_path']}")
 
+    if state.get("state_path") is not None:
+        print(f"Shared task state: {state['state_path']}")
+
+    if state.get("dashboard_state_path") is not None:
+        print(f"Dashboard state: {state['dashboard_state_path']}")
+        
     if state["errors"]:
         print("\nErrors:")
         for error in state["errors"]:
