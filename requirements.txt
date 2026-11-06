@@ -16,3 +16,4 @@ streamlit
 pypdf
 faiss-cpu
 python-dotenv
+pyyaml

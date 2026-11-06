@@ -1,0 +1,115 @@
+{
+  "timestamp_utc": "2026-11-06T14:09:57.695343+00:00",
+  "git_commit": "2e0ba46",
+  "python": "3.14.5",
+  "lightgbm": "4.7.0",
+  "sklearn": "1.9.1",
+  "pandas": "3.0.6",
+  "config": {
+    "data": {
+      "fit": "data/processed/train_random_model_fit.parquet",
+      "calibration": "data/processed/train_random_calibration.parquet",
+      "validation": "data/processed/validation_temporal_features.parquet"
+    },
+    "output_dir": "reports/experiments/cutoff_ablation",
+    "excluded_columns": [
+      "vehicle_id",
+      "class_label",
+      "binary_label"
+    ],
+    "time_columns": [
+      "cutoff_time",
+      "num_readouts"
+    ],
+    "categorical_columns": [
+      "Spec_0",
+      "Spec_1",
+      "Spec_2",
+      "Spec_3",
+      "Spec_4",
+      "Spec_5",
+      "Spec_6",
+      "Spec_7"
+    ],
+    "arms": [
+      {
+        "name": "A_full",
+        "features": "all",
+        "reweight": false
+      },
+      {
+        "name": "B_no_cutoff",
+        "features": "no_cutoff",
+        "reweight": false
+      },
+      {
+        "name": "C_no_time",
+        "features": "no_time",
+        "reweight": false
+      },
+      {
+        "name": "D_time_only",
+        "features": "time_only",
+        "reweight": false
+      },
+      {
+        "name": "E_spec_only",
+        "features": "spec_only",
+        "reweight": false
+      },
+      {
+        "name": "F_full_reweighted",
+        "features": "all",
+        "reweight": true
+      },
+      {
+        "name": "G_no_time_reweighted",
+        "features": "no_time",
+        "reweight": true
+      }
+    ],
+    "reweighting": {
+      "n_bins": 20,
+      "clip": [
+        0.1,
+        10.0
+      ]
+    },
+    "model": {
+      "n_estimators": 300,
+      "learning_rate": 0.05,
+      "num_leaves": 31,
+      "max_depth": -1,
+      "min_child_samples": 50,
+      "reg_lambda": 1.0,
+      "random_state": 42,
+      "n_jobs": 4
+    },
+    "lightgbm_memory": {
+      "force_col_wise": true
+    },
+    "memory": {
+      "fit_vehicle_fraction": 1.0
+    },
+    "calibration_methods": [
+      "uncalibrated",
+      "sigmoid",
+      "isotonic"
+    ],
+    "capacity_fractions": [
+      0.1,
+      0.3
+    ],
+    "bootstrap": {
+      "n_resamples": 1000,
+      "calibration": "sigmoid",
+      "reference_arm": "A_full",
+      "random_state": 0
+    },
+    "duration_probe": {
+      "enabled": true,
+      "n_estimators": 200
+    },
+    "top_importances": 25
+  }
+}

@@ -34,3 +34,4 @@ reports/generated_reports/
 # OS files
 .DS_Store
 Thumbs.db
+reports/experiments/

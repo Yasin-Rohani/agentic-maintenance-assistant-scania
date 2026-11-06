@@ -1,0 +1,26 @@
+{
+  "univariate_auc": {
+    "fit": {
+      "cutoff_time_auc_within48": 0.7270574182831828,
+      "cutoff_time_auc_class4": 0.79784424972067,
+      "num_readouts_auc_within48": 0.7282477703166406,
+      "num_readouts_auc_class4": 0.7802364378580525
+    },
+    "calibration": {
+      "cutoff_time_auc_within48": 0.7263103542532254,
+      "cutoff_time_auc_class4": 0.7711211560271669,
+      "num_readouts_auc_within48": 0.7350080363000219,
+      "num_readouts_auc_class4": 0.7512987055311494
+    },
+    "validation": {
+      "cutoff_time_auc_within48": 0.4303701928836708,
+      "cutoff_time_auc_class4": 0.4456515408238907,
+      "num_readouts_auc_within48": 0.49374251227986105,
+      "num_readouts_auc_class4": 0.5154122101027215
+    }
+  },
+  "duration_probe": {
+    "r2_calibration": 0.9351902856710029,
+    "r2_validation": 0.8268763266835276
+  }
+}
