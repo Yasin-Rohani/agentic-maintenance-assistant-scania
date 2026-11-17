@@ -154,8 +154,9 @@ class Partition:
                     values = pd.Series(values.to_pandas()).fillna("MISSING").astype(str)
                     if column not in self.categories:        # fit only
                         self.categories[column] = sorted(values.unique())
-                    codes = pd.Categorical(
-                        values, categories=self.categories[column]).codes
+                    # Unseen categories -> -1 -> NaN (same result as before,
+                    # without the pandas deprecation warning).
+                    codes = pd.Index(self.categories[column]).get_indexer(values)
                     array = np.where(codes < 0, np.nan, codes).astype(np.float32)
                 else:
                     array = values.to_numpy(zero_copy_only=False).astype(

@@ -1,0 +1,64 @@
+# E02 — Separate the shortcut effect from the class-prior effect.
+# All paths are relative to the repository root.
+
+data:
+  fit: data/processed/train_random_model_fit.parquet
+  calibration: data/processed/train_random_calibration.parquet
+  validation: data/processed/validation_temporal_features.parquet
+
+output_dir: reports/experiments/time_label_decoupling
+
+excluded_columns: [vehicle_id, class_label, binary_label]
+time_columns: [cutoff_time, num_readouts]
+categorical_columns: [Spec_0, Spec_1, Spec_2, Spec_3, Spec_4, Spec_5, Spec_6, Spec_7]
+
+# Training-weight schemes (all arms use all features, as in E01 arm A):
+#   none            no weights                                     (= E01 A)
+#   marginal        p_val(t) / p_fit(t)                            (= E01 F)
+#   prior_only      class weights = effective class prior of
+#                   'marginal' / fit prior; no time weighting
+#   decorrelate_val p_val(t) / p_fit(t | class); class totals kept
+#   decorrelate_fit p_fit(t) / p_fit(t | class); class totals kept
+#                   (uses NO Validation information at all)
+#   decorrelate_val_plus_prior   decorrelate_val x prior_only factor
+#
+# Only unlabelled Validation cutoff times are ever used. Never labels.
+arms:
+  - {name: A_none,              weights: none}
+  - {name: F_marginal,          weights: marginal}
+  - {name: I_prior_only,        weights: prior_only}
+  - {name: H_decorrelate_val,   weights: decorrelate_val}
+  - {name: H0_decorrelate_fit,  weights: decorrelate_fit}
+  - {name: J_decorrelate_prior, weights: decorrelate_val_plus_prior}
+
+weighting:
+  n_bins: 20             # quantile bins on cutoff_time
+  smoothing: 1.0         # Laplace pseudo-count per bin (small classes)
+  clip: [0.1, 10.0]      # clip density ratios
+
+# 'original' = the existing fit/calibration files (E01 split).
+# Integers = new vehicle-disjoint splits of fit+calibration vehicles.
+split_seeds: [original, 1, 2]
+calibration_fraction: 0.20
+
+model:                   # identical to src/train_multiclass_lightgbm.py
+  n_estimators: 300
+  learning_rate: 0.05
+  num_leaves: 31
+  max_depth: -1
+  min_child_samples: 50
+  reg_lambda: 1.0
+  random_state: 42
+  n_jobs: 4              # lower to 2 if the laptop becomes unresponsive
+
+lightgbm_memory:
+  force_col_wise: true
+
+calibration_methods: [uncalibrated, sigmoid, isotonic]
+capacity_fractions: [0.10, 0.30]
+
+bootstrap:
+  n_resamples: 1000
+  calibration: sigmoid   # probabilities used for the paired bootstrap
+  reference_arm: A_none
+  random_state: 0
