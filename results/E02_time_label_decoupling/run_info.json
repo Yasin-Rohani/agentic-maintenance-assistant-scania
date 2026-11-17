@@ -1,0 +1,116 @@
+{
+  "timestamp_utc": "2026-11-17T11:25:48.512970+00:00",
+  "git_commit": "66765fc",
+  "python": "3.14.5",
+  "lightgbm": "4.7.0",
+  "sklearn": "1.9.1",
+  "pandas": "3.0.6",
+  "seeds_run": [
+    "original",
+    "1",
+    "2"
+  ],
+  "arms_run": [
+    "A_none",
+    "F_marginal",
+    "I_prior_only",
+    "H_decorrelate_val",
+    "H0_decorrelate_fit",
+    "J_decorrelate_prior"
+  ],
+  "config": {
+    "data": {
+      "fit": "data/processed/train_random_model_fit.parquet",
+      "calibration": "data/processed/train_random_calibration.parquet",
+      "validation": "data/processed/validation_temporal_features.parquet"
+    },
+    "output_dir": "reports/experiments/time_label_decoupling",
+    "excluded_columns": [
+      "vehicle_id",
+      "class_label",
+      "binary_label"
+    ],
+    "time_columns": [
+      "cutoff_time",
+      "num_readouts"
+    ],
+    "categorical_columns": [
+      "Spec_0",
+      "Spec_1",
+      "Spec_2",
+      "Spec_3",
+      "Spec_4",
+      "Spec_5",
+      "Spec_6",
+      "Spec_7"
+    ],
+    "arms": [
+      {
+        "name": "A_none",
+        "weights": "none"
+      },
+      {
+        "name": "F_marginal",
+        "weights": "marginal"
+      },
+      {
+        "name": "I_prior_only",
+        "weights": "prior_only"
+      },
+      {
+        "name": "H_decorrelate_val",
+        "weights": "decorrelate_val"
+      },
+      {
+        "name": "H0_decorrelate_fit",
+        "weights": "decorrelate_fit"
+      },
+      {
+        "name": "J_decorrelate_prior",
+        "weights": "decorrelate_val_plus_prior"
+      }
+    ],
+    "weighting": {
+      "n_bins": 20,
+      "smoothing": 1.0,
+      "clip": [
+        0.1,
+        10.0
+      ]
+    },
+    "split_seeds": [
+      "original",
+      1,
+      2
+    ],
+    "calibration_fraction": 0.2,
+    "model": {
+      "n_estimators": 300,
+      "learning_rate": 0.05,
+      "num_leaves": 31,
+      "max_depth": -1,
+      "min_child_samples": 50,
+      "reg_lambda": 1.0,
+      "random_state": 42,
+      "n_jobs": 4
+    },
+    "lightgbm_memory": {
+      "force_col_wise": true
+    },
+    "calibration_methods": [
+      "uncalibrated",
+      "sigmoid",
+      "isotonic"
+    ],
+    "capacity_fractions": [
+      0.1,
+      0.3
+    ],
+    "bootstrap": {
+      "n_resamples": 1000,
+      "calibration": "sigmoid",
+      "reference_arm": "A_none",
+      "random_state": 0
+    }
+  }
+}
